@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.10 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.11 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -835,7 +835,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.10</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.11</div>
   </div>
 </div>
 
@@ -1450,13 +1450,13 @@ async function openDetail(id) {
     <div class="divider"></div>
 
     <div style="padding: 0 20px 12px; display:flex; flex-direction:column; gap:10px;">
-      <button class="btn-primary" onclick="toggleStatus(${m.id},'${m.status}')">
+      <button class="btn-primary" onclick="toggleStatus(${m.id})">
         ${m.status === 'active' ? 'Deactivate Membership' : 'Activate Membership'}
       </button>
     </div>
 
     <div class="danger-zone">
-      <button class="btn-danger" onclick="deleteMember(${m.id},'${m.name}')">Delete Member</button>
+      <button class="btn-danger" onclick="deleteMember(${m.id})">Delete Member</button>
     </div>
   `;
 
@@ -1469,19 +1469,45 @@ function closeDetail() {
   renderMembers();
 }
 
-async function toggleStatus(id, current) {
+async function toggleStatus(id) {
   const m = await get('members', id);
-  m.status = current === 'active' ? 'inactive' : 'active';
+  if (!m) return;
+  m.status = m.status === 'active' ? 'inactive' : 'active';
   await put('members', m);
   showToast(m.status === 'active' ? 'Membership activated' : 'Membership deactivated',
     m.status === 'active' ? 'success' : 'warning');
   openDetail(id);
 }
 
-async function deleteMember(id, name) {
-  if (!confirm(`Remove ${name} from the membership list? This cannot be undone.`)) return;
+// Members deleted by earlier versions left their check-ins behind. Clear any
+// that no longer belong to a member so those totals come back to the truth.
+// Guarded: an empty members store means something upstream is wrong, and in
+// that state we must not wipe the history.
+async function purgeOrphanCheckins() {
+  const members = await getAll('members');
+  if (!members.length) return 0;
+  const ids = new Set(members.map(m => m.id));
+  const orphans = (await getAll('checkins')).filter(c => !ids.has(c.memberId));
+  for (const c of orphans) if (c.id !== undefined) await del('checkins', c.id);
+  return orphans.length;
+}
+
+// A member's check-ins go with them. Left behind they would be unreachable —
+// the recent-check-ins list has to look the member up, so it silently drops
+// them — while the Dashboard's "Total Check-ins" counts the whole store and
+// would keep counting them forever.
+async function deleteMember(id) {
+  const m = await get('members', id);
+  if (!m) return;
+  const theirs = (await getAll('checkins')).filter(c => c.memberId === id);
+  const n = theirs.length;
+  const msg = n
+    ? `Remove ${m.name}? Their ${n} check-in${n === 1 ? '' : 's'} will be deleted with them. This cannot be undone.`
+    : `Remove ${m.name} from the membership list? This cannot be undone.`;
+  if (!confirm(msg)) return;
+  for (const c of theirs) if (c.id !== undefined) await del('checkins', c.id);
   await del('members', id);
-  showToast(`${name} removed`);
+  showToast(n ? `${m.name} and ${n} check-in${n === 1 ? '' : 's'} removed` : `${m.name} removed`);
   closeDetail();
 }
 
@@ -1596,7 +1622,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.10',
+    version: '1.0.11',
     plans,
     members,
     checkins
@@ -1730,7 +1756,9 @@ openDB().then(async () => {
   await seedIfEmpty();
   await reconcilePlans();   // the demo members may introduce plan keys of their own
   await renderPlanPicker();
+  const orphans = await purgeOrphanCheckins();   // rows stranded by earlier deletions
   renderDashboard();
+  if (orphans) showToast(`${orphans} check-in${orphans === 1 ? '' : 's'} left behind by a deleted member were cleared`, 'warning');
 }).catch(err => {
   console.error('DB init failed', err);
 });
