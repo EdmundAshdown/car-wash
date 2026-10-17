@@ -18,15 +18,25 @@ Every shop-specific string lives in one `BRAND` object, declared near the top of
 | `fullName` | The browser tab title |
 | `dbName` | The IndexedDB database name — **changing this starts a fresh, empty database** |
 | `exportPrefix` | The prefix of exported backup filenames |
+| `plateRegion` | Optional state name on the plate chip, e.g. `'ALABAMA'`. Blank (the default) hides the block |
+| `plateMotto` | Optional second line under it, e.g. `'Heart of Dixie'` |
 
-Reskinning for a different customer means editing those four values and pushing.
-Nothing else in the file refers to a shop by name.
+Reskinning for a different customer means editing those values and pushing.
+Nothing else in the file names a shop, a state or a region.
 
 ## Data
 
-Members and check-ins are stored in the browser's IndexedDB, per origin. The
-first run seeds four synthetic demo members so the screens are not empty. The
-settings page exports the whole book as JSON.
+Members, check-ins and membership plans are stored in the browser's IndexedDB,
+per origin. The first run seeds four synthetic demo members — fictional names,
+`555` phone numbers and `example.com` addresses — so the screens are not empty.
+
+Membership plans are records rather than constants, managed on the **Plans**
+page. The Add Member form only ever offers plans that exist there, so the two
+cannot drift apart, and a plan still in use cannot be deleted.
+
+The Dashboard exports the whole book — members, check-ins and plans — as JSON,
+and can restore it. Restoring an older backup that has no plans falls back to
+the defaults and adopts whatever the restored members are on.
 
 ## Live
 

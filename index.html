@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- saved from url=(0062)file:///C:/Users/edmun/Downloads/magic-city-membership_11.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,18 +7,20 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.8 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.9 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
-     Edit these four values to reskin the app for a different customer.
+     Edit these values to reskin the app for a different customer.
      ══════════════════════════════════════════════════════════════════ -->
 <script>
   const BRAND = {
     name:         'Downtown Car Wash',  // shop name shown at the top of every page
     fullName:     'Downtown Car Wash',  // browser tab title
     dbName:       'carWashDB',          // IndexedDB name — changing this starts a fresh, empty database
-    exportPrefix: 'car-wash'            // prefix for exported backup filenames
+    exportPrefix: 'car-wash',           // prefix for exported backup filenames
+    plateRegion:  '',                   // e.g. 'ALABAMA' — small line on the plate chip; blank hides it
+    plateMotto:   ''                    // e.g. 'Heart of Dixie' — the second line of that block
   };
   document.title = BRAND.fullName + ' — Members';
   (() => {
@@ -221,7 +222,7 @@
   .status-badge.pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
   .status-badge svg { width: 10px; height: 10px; }
 
-  /* Alabama plate signature element */
+  /* Licence plate chip — the state block is optional, see BRAND.plateRegion */
   .plate-chip {
     margin: 0 18px 16px;
     background: #F8F5E8;
@@ -700,7 +701,7 @@
   </div>
   <div class="form-section">
     <label>Phone Number</label>
-    <input class="form-input" id="f-phone" type="tel" placeholder="(205) 555-0100" autocomplete="off">
+    <input class="form-input" id="f-phone" type="tel" placeholder="(555) 555-0100" autocomplete="off">
   </div>
   <div class="form-section">
     <label>Email (optional)</label>
@@ -914,7 +915,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.8</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.9</div>
   </div>
 </div>
 
@@ -1308,12 +1309,17 @@ function formatTime(ts) {
 
 function plateChip(plate) {
   if (!plate) return '';
+  // The state block is decoration, not data. It stays hidden unless the shop
+  // sets BRAND.plateRegion, so no region is baked into the app.
+  const region = BRAND.plateRegion
+    ? `<div class="plate-state"><span>${esc(BRAND.plateRegion)}</span>${BRAND.plateMotto ? '<br>' + esc(BRAND.plateMotto) : ''}</div>`
+    : '';
   return `
   <div class="plate-chip">
     <div>
-      <div class="plate-text">${plate}</div>
+      <div class="plate-text">${esc(plate)}</div>
     </div>
-    <div class="plate-state"><span>ALABAMA</span><br>Heart of Dixie</div>
+    ${region}
   </div>`;
 }
 
@@ -1647,7 +1653,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.8',
+    version: '1.0.9',
     plans,
     members,
     checkins
@@ -1749,11 +1755,15 @@ async function seedIfEmpty() {
   const all = await getAll('members');
   if (all.length > 0) return;
 
+  // Synthetic demo data so a fresh install has something to look at. Names,
+  // numbers, addresses and plates are fictional: 555 is a reserved area code
+  // and example.com is reserved for documentation, so nothing here can point
+  // at a real person or place.
   const demo = [
-    { name: 'James Patterson', phone: '(205) 555-0142', email: 'jpatterson@email.com', plate: 'ALB 4421', year: '2021', color: 'Black', vehicle: 'Ford F-150', plan: 'premium', status: 'active', notes: '', joinDate: Date.now() - 90*86400000 },
-    { name: 'Maria Gonzalez', phone: '(205) 555-0187', email: 'mgonzalez@email.com', plate: 'XTR 9923', year: '2019', color: 'Silver', vehicle: 'Honda Accord', plan: 'basic', status: 'active', notes: 'Prefers bay 2', joinDate: Date.now() - 45*86400000 },
-    { name: 'David Kim', phone: '(205) 555-0231', email: '', plate: 'DNL 7712', year: '2022', color: 'White', vehicle: 'Toyota RAV4', plan: 'unlimited', status: 'active', notes: '', joinDate: Date.now() - 120*86400000 },
-    { name: 'Sarah Mitchell', phone: '(205) 555-0399', email: 'smitchell@email.com', plate: 'BCK 5544', year: '2018', color: 'Blue', vehicle: 'Chevy Malibu', plan: 'basic', status: 'inactive', notes: 'Payment lapsed', joinDate: Date.now() - 200*86400000 },
+    { name: 'James Patterson', phone: '(555) 555-0142', email: 'jpatterson@example.com', plate: 'JHN 4821', year: '2021', color: 'Black', vehicle: 'Ford F-150', plan: 'premium', status: 'active', notes: '', joinDate: Date.now() - 90*86400000 },
+    { name: 'Maria Gonzalez', phone: '(555) 555-0187', email: 'mgonzalez@example.com', plate: 'XTR 9923', year: '2019', color: 'Silver', vehicle: 'Honda Accord', plan: 'basic', status: 'active', notes: 'Prefers bay 2', joinDate: Date.now() - 45*86400000 },
+    { name: 'David Kim', phone: '(555) 555-0231', email: '', plate: 'DNL 7712', year: '2022', color: 'White', vehicle: 'Toyota RAV4', plan: 'unlimited', status: 'active', notes: '', joinDate: Date.now() - 120*86400000 },
+    { name: 'Sarah Mitchell', phone: '(555) 555-0399', email: 'smitchell@example.com', plate: 'BCK 5544', year: '2018', color: 'Blue', vehicle: 'Chevy Malibu', plan: 'basic', status: 'inactive', notes: 'Payment lapsed', joinDate: Date.now() - 200*86400000 },
   ];
 
   for (const m of demo) {
