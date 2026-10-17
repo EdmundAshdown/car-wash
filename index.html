@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.12 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.13 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -191,7 +191,7 @@
     font-family: 'Syne', sans-serif;
     font-size: 18px;
     font-weight: 700;
-    color: var(--bg);
+    color: var(--blue-dark);
     flex-shrink: 0;
   }
 
@@ -280,7 +280,7 @@
     background: var(--gold);
     border: none;
     border-radius: var(--radius-md);
-    color: var(--bg);
+    color: var(--blue-dark);
     font-family: 'Inter', sans-serif;
     font-size: 16px;
     font-weight: 700;
@@ -331,11 +331,15 @@
   }
   .btn-ghost:active { border-color: var(--white); color: var(--white); }
 
-  /* Empty state */
+  /* Empty state — sits where dark content cards would be, so it carries the
+     same surface, otherwise its white heading vanishes on the light page. */
   .empty-state {
     text-align: center;
     padding: 48px 32px;
     color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
   }
   .empty-state svg {
     width: 48px; height: 48px;
@@ -463,7 +467,9 @@
   }
   .plan-option.selected {
     border-color: var(--gold);
-    background: rgba(245,197,24,0.08);
+    /* Layer the gold wash over the tile's own surface. Setting the background
+       outright would drop --surface and leave white text on the light page. */
+    background: linear-gradient(rgba(245,197,24,0.08), rgba(245,197,24,0.08)), var(--surface);
   }
   .plan-option .plan-name {
     font-weight: 600;
@@ -562,7 +568,7 @@
     font-family: 'Syne', sans-serif;
     font-size: 24px;
     font-weight: 800;
-    color: var(--bg);
+    color: var(--blue-dark);
     flex-shrink: 0;
   }
   .detail-name {
@@ -651,6 +657,15 @@
   }
   .stat-number.aqua { color: var(--teal); }
   .stat-number.amber { color: var(--gold); }
+
+  /* Recent check-ins — carries the same dark surface as the stat cards above
+     it, so the light-on-dark rows inside are never left on the page colour. */
+  #recent-checkins {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 2px 16px;
+  }
 
   /* ── MISC ── */
   .section-pad { height: 16px; }
@@ -836,7 +851,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.12</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.13</div>
   </div>
 </div>
 
@@ -870,7 +885,7 @@
 </div>
 
 <!-- ══════════════ DETAIL VIEW (overlay) ══════════════ -->
-<div id="detail-view" style="display:none; position:fixed; inset:0; background:var(--bg); z-index:150; overflow-y:auto; padding-bottom:90px;">
+<div id="detail-view" style="display:none; position:fixed; inset:0; background:var(--surface); z-index:150; overflow-y:auto; padding-bottom:90px;">
   <button class="detail-back" onclick="closeDetail()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 18-6-6 6-6"></path></svg>
     Back
@@ -1658,9 +1673,9 @@ async function renderDashboard() {
   el.innerHTML = recent.map(c => {
     const m = memberMap[c.memberId];
     if (!m) return '';
-    return `<div class="checkin-entry" style="border-bottom:1px solid rgba(255,255,255,0.05); padding: 10px 0;">
+    return `<div class="checkin-entry">
       <div style="display:flex; align-items:center; gap:10px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--bg);flex-shrink:0;">${esc(initials(m.name))}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--blue-dark);flex-shrink:0;">${esc(initials(m.name))}</div>
         <div>
           <div style="font-size:15px;font-weight:500;color:var(--white);">${esc(m.name)}</div>
           <div style="font-size:12px;color:var(--text-muted);">${esc(m.plate || m.vehicle || '—')}</div>
@@ -1683,7 +1698,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.12',
+    version: '1.0.13',
     plans,
     members,
     checkins
