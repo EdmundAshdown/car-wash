@@ -1758,7 +1758,7 @@ openDB().then(async () => {
   await renderPlanPicker();
   const orphans = await purgeOrphanCheckins();   // rows stranded by earlier deletions
   renderDashboard();
-  if (orphans) showToast(`${orphans} check-in${orphans === 1 ? '' : 's'} left behind by a deleted member were cleared`, 'warning');
+  if (orphans) showToast(`${orphans} check-in${orphans === 1 ? '' : 's'} left behind by a deleted member ${orphans === 1 ? 'was' : 'were'} cleared`, 'warning');
 }).catch(err => {
   console.error('DB init failed', err);
 });
