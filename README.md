@@ -31,7 +31,8 @@ per origin. The first run seeds four synthetic demo members — fictional names,
 `555` phone numbers and `example.com` addresses — so the screens are not empty.
 
 Membership plans are records rather than constants, managed on the **Plans**
-page. The Add Member form only ever offers plans that exist there, so the two
+page. Each carries a name, a description of what it includes and a monthly
+price. The Add Member form only ever offers plans that exist there, so the two
 cannot drift apart, and a plan still in use cannot be deleted.
 
 The Dashboard exports the whole book — members, check-ins and plans — as JSON,

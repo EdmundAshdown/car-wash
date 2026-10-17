@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.9 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.10 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -418,7 +418,12 @@
     font-size: 15px; font-weight: 600; color: var(--white);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .plan-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .plan-row-desc {
+    font-size: 12px; color: var(--text-secondary);
+    line-height: 1.45; margin-top: 3px;
+  }
+  .plan-row-desc.unset { color: var(--text-muted); font-style: italic; }
+  .plan-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
   .plan-row-price {
     font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800;
     color: var(--gold); white-space: nowrap;
@@ -475,6 +480,16 @@
   .plan-option .plan-freq {
     font-size: 11px;
     color: var(--text-muted);
+  }
+  .plan-option .plan-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 5px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   /* Plate scan input special */
@@ -608,6 +623,7 @@
   .plan-banner-label { font-size: 12px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 2px; }
   .plan-banner-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--gold); }
   .plan-banner-exp { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .plan-banner-desc { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.4; max-width: 190px; }
 
   .divider { height: 1px; background: var(--border); margin: 0 20px 20px; }
 
@@ -819,7 +835,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.9</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.10</div>
   </div>
 </div>
 
@@ -838,6 +854,8 @@
   <div class="form-section">
     <label id="plan-form-title">Add a Plan</label>
     <input class="form-input" id="p-name" type="text" placeholder="Plan name (e.g., Premium)" autocomplete="off">
+    <div style="height:10px"></div>
+    <textarea class="form-input" id="p-desc" rows="2" placeholder="What the plan includes (e.g., Unlimited exterior washes, priority lane)" style="resize:vertical; min-height:72px; line-height:1.45;"></textarea>
     <div style="height:10px"></div>
     <input class="form-input" id="p-price" type="number" inputmode="decimal" min="0" step="1" placeholder="Monthly price in dollars" autocomplete="off">
     <div style="height:14px"></div>
@@ -986,8 +1004,8 @@ function del(store, key) {
 // Member picker and the plan list cannot drift apart.
 // ════════════════════════════════════════════════
 const DEFAULT_PLANS = [
-  { key: 'basic',    name: 'Basic',     price: 19, order: 1 },
-  { key: 'handwash', name: 'Hand Wash', price: 25, order: 2 }
+  { key: 'basic',    name: 'Basic',     price: 19, order: 1, desc: 'Exterior wash, use of the self-serve bays' },
+  { key: 'handwash', name: 'Hand Wash', price: 25, order: 2, desc: 'Hand washed and hand dried by staff, every visit' }
 ];
 
 let PLANS = [];            // in-memory cache; reloaded after every change
@@ -1003,6 +1021,7 @@ const planPrice = key => {
   const p = planByKey(key);
   return (p && typeof p.price === 'number' && p.price > 0) ? p.price : null;
 };
+const planDesc  = key => { const p = planByKey(key); return (p && p.desc) ? p.desc : null; };
 
 async function refreshPlans() {
   PLANS = (await getAll('plans'))
@@ -1020,7 +1039,7 @@ async function reconcilePlans() {
     if (m.plan && !known.has(m.plan)) {
       known.add(m.plan);
       adopted.push(m.plan);
-      await put('plans', { key: m.plan, name: titleCase(m.plan), price: null, order: 99, adopted: true });
+      await put('plans', { key: m.plan, name: titleCase(m.plan), price: null, desc: null, order: 99, adopted: true });
     }
   }
   await refreshPlans();
@@ -1057,6 +1076,7 @@ async function renderPlanPicker() {
       <div class="plan-name">${esc(p.name)}</div>
       <div class="plan-price">${p.price > 0 ? '$' + p.price : '—'}</div>
       <div class="plan-freq">/month</div>
+      ${p.desc ? `<div class="plan-desc">${esc(p.desc)}</div>` : ''}
     </div>`).join('');
 }
 
@@ -1080,6 +1100,9 @@ async function renderPlansPage() {
     <div class="plan-row">
       <div class="plan-row-main">
         <div class="plan-row-name">${esc(p.name)}</div>
+        ${p.desc
+          ? `<div class="plan-row-desc">${esc(p.desc)}</div>`
+          : `<div class="plan-row-desc unset">No description</div>`}
         <div class="plan-row-meta">${n} member${n === 1 ? '' : 's'}${p.adopted ? ' · taken from member data' : ''}</div>
       </div>
       <div class="plan-row-price${priced ? '' : ' unset'}">${priced ? '$' + p.price : 'no price'}</div>
@@ -1100,6 +1123,7 @@ function editPlan(key) {
   if (!p) return;
   editingPlanKey = key;
   document.getElementById('p-name').value  = p.name;
+  document.getElementById('p-desc').value  = p.desc || '';
   document.getElementById('p-price').value = p.price > 0 ? p.price : '';
   document.getElementById('plan-form-title').textContent = 'Edit Plan';
   document.getElementById('p-save').textContent = 'Save Changes';
@@ -1110,6 +1134,7 @@ function editPlan(key) {
 function cancelPlanEdit() {
   editingPlanKey = null;
   document.getElementById('p-name').value  = '';
+  document.getElementById('p-desc').value  = '';
   document.getElementById('p-price').value = '';
   document.getElementById('plan-form-title').textContent = 'Add a Plan';
   document.getElementById('p-save').textContent = 'Add Plan';
@@ -1118,6 +1143,7 @@ function cancelPlanEdit() {
 
 async function savePlan() {
   const name     = document.getElementById('p-name').value.trim();
+  const desc     = document.getElementById('p-desc').value.trim();
   const priceRaw = document.getElementById('p-price').value.trim();
   const price    = priceRaw === '' ? null : Number(priceRaw);
 
@@ -1128,13 +1154,13 @@ async function savePlan() {
     const p = planByKey(editingPlanKey);
     if (!p) return;
     // The key never changes, so members already on this plan stay on it.
-    await put('plans', { key: p.key, name, price, order: p.order });
+    await put('plans', { key: p.key, name, desc: desc || null, price, order: p.order });
     showToast('Plan updated');
   } else {
     const key = slugify(name);
     if (!key) { showToast('Plan name needs letters or numbers', 'error'); return; }
     if (PLANS.some(p => p.key === key)) { showToast('A plan with that name already exists', 'error'); return; }
-    await put('plans', { key, name, price, order: PLANS.length + 1 });
+    await put('plans', { key, name, desc: desc || null, price, order: PLANS.length + 1 });
     showToast('Plan added');
   }
 
@@ -1358,6 +1384,7 @@ async function openDetail(id) {
       <div>
         <div class="plan-banner-label">Current Plan</div>
         <div class="plan-banner-name">${esc(planLabel(m.plan))}</div>
+        ${planDesc(m.plan) ? `<div class="plan-banner-desc">${esc(planDesc(m.plan))}</div>` : ''}
         ${expDate ? `<div class="plan-banner-exp">Renews ${formatDate(expDate.getTime())}</div>` : ''}
       </div>
       <div style="text-align:right;">
@@ -1557,7 +1584,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.9',
+    version: '1.0.10',
     plans,
     members,
     checkins
