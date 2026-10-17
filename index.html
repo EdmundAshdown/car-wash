@@ -5,10 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Tarrant Car Wash">
+<meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
-<title>Tarrant Full Service Car Wash — Members</title>
-<!-- APP VERSION: 1.0.6 — update this and the Dashboard label on each release -->
+<title>Downtown Car Wash — Members</title>
+<!-- APP VERSION: 1.0.7 — update this and the Dashboard label on each release -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     WHITE-LABEL CONFIG — the only place the shop's identity is set.
+     Edit these four values to reskin the app for a different customer.
+     ══════════════════════════════════════════════════════════════════ -->
+<script>
+  const BRAND = {
+    name:         'Downtown Car Wash',  // shop name shown at the top of every page
+    fullName:     'Downtown Car Wash',  // browser tab title
+    dbName:       'carWashDB',          // IndexedDB name — changing this starts a fresh, empty database
+    exportPrefix: 'car-wash'            // prefix for exported backup filenames
+  };
+  document.title = BRAND.fullName + ' — Members';
+  (() => {
+    const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (meta) meta.setAttribute('content', BRAND.name);
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap');
 
@@ -603,7 +621,7 @@
 <!-- ══════════════ CHECK-IN PAGE ══════════════ -->
 <div id="page-checkin" class="page active">
   <div class="page-header">
-    <div class="eyebrow">Tarrant Car Wash</div>
+    <div class="eyebrow" data-brand-name></div>
     <h1>Check In</h1>
   </div>
   <div class="checkin-search">
@@ -618,7 +636,7 @@
 <!-- ══════════════ MEMBERS PAGE ══════════════ -->
 <div id="page-members" class="page">
   <div class="page-header">
-    <div class="eyebrow">Tarrant Car Wash</div>
+    <div class="eyebrow" data-brand-name></div>
     <h1>Members</h1>
   </div>
   <div class="members-controls">
@@ -632,7 +650,7 @@
 <!-- ══════════════ ADD MEMBER PAGE ══════════════ -->
 <div id="page-add" class="page">
   <div class="page-header">
-    <div class="eyebrow">Tarrant Car Wash</div>
+    <div class="eyebrow" data-brand-name></div>
     <h1>New Member</h1>
   </div>
 
@@ -705,7 +723,7 @@
 <!-- ══════════════ DASHBOARD PAGE ══════════════ -->
 <div id="page-dash" class="page">
   <div class="page-header">
-    <div class="eyebrow">Tarrant Car Wash</div>
+    <div class="eyebrow" data-brand-name></div>
     <h1>Dashboard</h1>
   </div>
   <div class="stats-grid" id="stats-grid">
@@ -864,7 +882,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.6</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.7</div>
   </div>
 </div>
 
@@ -906,9 +924,14 @@
 
 <script>
 // ════════════════════════════════════════════════
+// BRANDING — applies the BRAND config declared in <head>
+// ════════════════════════════════════════════════
+document.querySelectorAll('[data-brand-name]').forEach(el => el.textContent = BRAND.name);
+
+// ════════════════════════════════════════════════
 // DB
 // ════════════════════════════════════════════════
-const DB_NAME = 'MagicCityDB', DB_VER = 2;
+const DB_NAME = BRAND.dbName, DB_VER = 2;
 let db;
 
 function openDB() {
@@ -1368,7 +1391,7 @@ async function exportDB() {
   const checkins = await getAll('checkins');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.6',
+    version: '1.0.7',
     members,
     checkins
   };
@@ -1378,7 +1401,7 @@ async function exportDB() {
   const date = new Date().toISOString().slice(0, 10);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `tarrant-members-${date}.json`;
+  a.download = `${BRAND.exportPrefix}-members-${date}.json`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('Backup downloaded!');
