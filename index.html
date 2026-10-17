@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.7 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.8 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -401,6 +401,46 @@
 
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+  /* ── PLANS CONFIG (admin) ── */
+  .plan-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .plan-row-main { flex: 1; min-width: 0; }
+  .plan-row-name {
+    font-size: 15px; font-weight: 600; color: var(--white);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .plan-row-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .plan-row-price {
+    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800;
+    color: var(--gold); white-space: nowrap;
+  }
+  .plan-row-price.unset {
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    color: var(--text-muted);
+  }
+  .plan-row-actions { display: flex; gap: 6px; }
+  .plan-icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    padding: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  .plan-icon-btn:active { color: var(--white); border-color: var(--border-strong); }
+  .plan-icon-btn.danger { color: #F87171; }
+  .plan-icon-btn svg { width: 15px; height: 15px; stroke-width: 2; }
+
   .plan-picker {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -684,17 +724,9 @@
 
   <div class="form-section">
     <label>Membership Plan</label>
-    <div class="plan-picker">
-      <div class="plan-option selected" data-plan="basic" onclick="selectPlan(this,&#39;basic&#39;)">
-        <div class="plan-name">Basic</div>
-        <div class="plan-price">$19</div>
-        <div class="plan-freq">/month</div>
-      </div>
-      <div class="plan-option" data-plan="handwash" onclick="selectPlan(this,&#39;handwash&#39;)">
-        <div class="plan-name">Hand Wash</div>
-        <div class="plan-price">$25</div>
-        <div class="plan-freq">/month</div>
-      </div>
+    <div class="plan-picker" id="plan-picker"></div>
+    <div id="plan-picker-empty" style="display:none; font-size:13px; color:var(--text-muted); padding:14px; background:var(--surface); border-radius:var(--radius-md); border:1px dashed var(--border-strong); line-height:1.5;">
+      No plans yet. Add one on the <strong style="color:var(--white);">Plans</strong> page and it will appear here.
     </div>
   </div>
 
@@ -882,7 +914,34 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.7</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.8</div>
+  </div>
+</div>
+
+<!-- ══════════════ PLANS / CONFIG PAGE ══════════════ -->
+<div id="page-plans" class="page">
+  <div class="page-header">
+    <div class="eyebrow" data-brand-name></div>
+    <h1>Plans</h1>
+  </div>
+
+  <div class="form-section">
+    <label>Available Plans</label>
+    <div id="plan-list"></div>
+  </div>
+
+  <div class="form-section">
+    <label id="plan-form-title">Add a Plan</label>
+    <input class="form-input" id="p-name" type="text" placeholder="Plan name (e.g., Premium)" autocomplete="off">
+    <div style="height:10px"></div>
+    <input class="form-input" id="p-price" type="number" inputmode="decimal" min="0" step="1" placeholder="Monthly price in dollars" autocomplete="off">
+    <div style="height:14px"></div>
+    <button class="btn-primary" id="p-save" onclick="savePlan()">Add Plan</button>
+    <button class="btn-ghost" id="p-cancel" onclick="cancelPlanEdit()" style="display:none;">Cancel</button>
+  </div>
+
+  <div style="padding: 4px 20px 24px; font-size:12px; color:var(--text-muted); line-height:1.6;">
+    Plans live in the same database as the members, so the Add Member form can only ever offer a plan that exists here. A plan in use can't be deleted until those members are moved off it.
   </div>
 </div>
 
@@ -920,6 +979,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
     Dashboard
   </button>
+  <button class="nav-btn" onclick="showPage(&#39;plans&#39;,this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+    Plans
+  </button>
 </nav>
 
 <script>
@@ -931,7 +994,7 @@ document.querySelectorAll('[data-brand-name]').forEach(el => el.textContent = BR
 // ════════════════════════════════════════════════
 // DB
 // ════════════════════════════════════════════════
-const DB_NAME = BRAND.dbName, DB_VER = 2;
+const DB_NAME = BRAND.dbName, DB_VER = 3;
 let db;
 
 function openDB() {
@@ -949,6 +1012,11 @@ function openDB() {
         const cs = d.createObjectStore('checkins', { keyPath: 'id', autoIncrement: true });
         cs.createIndex('memberId', 'memberId', { unique: false });
         cs.createIndex('ts', 'ts', { unique: false });
+      }
+      // v3: plans used to be hardcoded in the markup and in a price map. They are
+      // now records, so the Add Member picker and the plan list cannot disagree.
+      if (!d.objectStoreNames.contains('plans')) {
+        d.createObjectStore('plans', { keyPath: 'key' });
       }
     };
     req.onsuccess = e => { db = e.target.result; res(db); };
@@ -1008,6 +1076,190 @@ function del(store, key) {
 }
 
 // ════════════════════════════════════════════════
+// PLANS — the single source of truth for what can be
+// assigned to a member. They live in the DB so the Add
+// Member picker and the plan list cannot drift apart.
+// ════════════════════════════════════════════════
+const DEFAULT_PLANS = [
+  { key: 'basic',    name: 'Basic',     price: 19, order: 1 },
+  { key: 'handwash', name: 'Hand Wash', price: 25, order: 2 }
+];
+
+let PLANS = [];            // in-memory cache; reloaded after every change
+let editingPlanKey = null;
+
+const esc      = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const titleCase = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const slugify  = s => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+const planByKey = key => PLANS.find(p => p.key === key) || null;
+const planLabel = key => { const p = planByKey(key); return p ? p.name : (key ? titleCase(key) : '—'); };
+const planPrice = key => {
+  const p = planByKey(key);
+  return (p && typeof p.price === 'number' && p.price > 0) ? p.price : null;
+};
+
+async function refreshPlans() {
+  PLANS = (await getAll('plans'))
+    .sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+}
+
+// Any plan a member is already on must exist as an assignable plan. Otherwise
+// opening that member in the Add form would silently move them to whatever the
+// form had selected. Missing plans are adopted from the member data.
+async function reconcilePlans() {
+  const known = new Set((await getAll('plans')).map(p => p.key));
+  const members = await getAll('members');
+  const adopted = [];
+  for (const m of members) {
+    if (m.plan && !known.has(m.plan)) {
+      known.add(m.plan);
+      adopted.push(m.plan);
+      await put('plans', { key: m.plan, name: titleCase(m.plan), price: null, order: 99, adopted: true });
+    }
+  }
+  await refreshPlans();
+  return adopted;
+}
+
+async function seedPlans() {
+  if (!(await getAll('plans')).length) {
+    for (const p of DEFAULT_PLANS) await put('plans', p);
+  }
+  await reconcilePlans();
+}
+
+// ── Add Member: the picker is built from the DB ──
+// Reads the store rather than trusting the cache, so the picker can never offer
+// a plan the Plans page has already changed or removed.
+async function renderPlanPicker() {
+  await refreshPlans();
+  const wrap  = document.getElementById('plan-picker');
+  const empty = document.getElementById('plan-picker-empty');
+  if (!wrap) return;
+
+  if (!PLANS.length) {
+    wrap.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    currentPlan = null;
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (!PLANS.some(p => p.key === currentPlan)) currentPlan = PLANS[0].key;
+
+  wrap.innerHTML = PLANS.map(p => `
+    <div class="plan-option${p.key === currentPlan ? ' selected' : ''}" data-plan="${p.key}" onclick="selectPlan(this, '${p.key}')">
+      <div class="plan-name">${esc(p.name)}</div>
+      <div class="plan-price">${p.price > 0 ? '$' + p.price : '—'}</div>
+      <div class="plan-freq">/month</div>
+    </div>`).join('');
+}
+
+// ── Plans page (admin config) ──
+async function renderPlansPage() {
+  await refreshPlans();
+  const members = await getAll('members');
+  const counts = {};
+  members.forEach(m => { if (m.plan) counts[m.plan] = (counts[m.plan] || 0) + 1; });
+
+  const list = document.getElementById('plan-list');
+  if (!PLANS.length) {
+    list.innerHTML = `<div style="color:var(--text-muted); font-size:14px; padding:8px 0;">No plans yet. Add one below.</div>`;
+    return;
+  }
+
+  list.innerHTML = PLANS.map(p => {
+    const n = counts[p.key] || 0;
+    const priced = p.price > 0;
+    return `
+    <div class="plan-row">
+      <div class="plan-row-main">
+        <div class="plan-row-name">${esc(p.name)}</div>
+        <div class="plan-row-meta">${n} member${n === 1 ? '' : 's'}${p.adopted ? ' · taken from member data' : ''}</div>
+      </div>
+      <div class="plan-row-price${priced ? '' : ' unset'}">${priced ? '$' + p.price : 'no price'}</div>
+      <div class="plan-row-actions">
+        <button class="plan-icon-btn" title="Edit" aria-label="Edit ${esc(p.name)}" onclick="editPlan('${p.key}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+        </button>
+        <button class="plan-icon-btn danger" title="Delete" aria-label="Delete ${esc(p.name)}" onclick="deletePlan('${p.key}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editPlan(key) {
+  const p = planByKey(key);
+  if (!p) return;
+  editingPlanKey = key;
+  document.getElementById('p-name').value  = p.name;
+  document.getElementById('p-price').value = p.price > 0 ? p.price : '';
+  document.getElementById('plan-form-title').textContent = 'Edit Plan';
+  document.getElementById('p-save').textContent = 'Save Changes';
+  document.getElementById('p-cancel').style.display = 'block';
+  document.getElementById('p-name').focus();
+}
+
+function cancelPlanEdit() {
+  editingPlanKey = null;
+  document.getElementById('p-name').value  = '';
+  document.getElementById('p-price').value = '';
+  document.getElementById('plan-form-title').textContent = 'Add a Plan';
+  document.getElementById('p-save').textContent = 'Add Plan';
+  document.getElementById('p-cancel').style.display = 'none';
+}
+
+async function savePlan() {
+  const name     = document.getElementById('p-name').value.trim();
+  const priceRaw = document.getElementById('p-price').value.trim();
+  const price    = priceRaw === '' ? null : Number(priceRaw);
+
+  if (!name) { showToast('Plan name is required', 'error'); return; }
+  if (price !== null && (!isFinite(price) || price < 0)) { showToast('Price must be a number', 'error'); return; }
+
+  if (editingPlanKey) {
+    const p = planByKey(editingPlanKey);
+    if (!p) return;
+    // The key never changes, so members already on this plan stay on it.
+    await put('plans', { key: p.key, name, price, order: p.order });
+    showToast('Plan updated');
+  } else {
+    const key = slugify(name);
+    if (!key) { showToast('Plan name needs letters or numbers', 'error'); return; }
+    if (PLANS.some(p => p.key === key)) { showToast('A plan with that name already exists', 'error'); return; }
+    await put('plans', { key, name, price, order: PLANS.length + 1 });
+    showToast('Plan added');
+  }
+
+  cancelPlanEdit();
+  await renderPlansPage();
+  await renderPlanPicker();
+}
+
+async function deletePlan(key) {
+  const p = planByKey(key);
+  if (!p) return;
+
+  if (PLANS.length <= 1) { showToast('Keep at least one plan', 'error'); return; }
+
+  const members = await getAll('members');
+  const inUse   = members.filter(m => m.plan === key).length;
+  if (inUse > 0) {
+    showToast(`${inUse} member${inUse === 1 ? '' : 's'} on ${p.name} — move them first`, 'error');
+    return;
+  }
+  if (!confirm(`Delete the ${p.name} plan?`)) return;
+
+  await del('plans', key);
+  if (editingPlanKey === key) cancelPlanEdit();
+  await renderPlansPage();
+  await renderPlanPicker();
+  showToast('Plan deleted');
+}
+
+// ════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════
 let currentFilter = 'all';
@@ -1027,6 +1279,7 @@ function showPage(id, btn) {
 
   if (id === 'members') renderMembers();
   if (id === 'dash') renderDashboard();
+  if (id === 'plans') renderPlansPage();
   if (id === 'checkin') {
     document.getElementById('checkin-search').value = '';
     document.getElementById('checkin-results').innerHTML = '';
@@ -1078,7 +1331,7 @@ function memberCardHTML(m) {
     </div>
     ${m.plate ? plateChip(m.plate) : ''}
     <div class="member-card-footer">
-      <span>${m.plan ? m.plan.charAt(0).toUpperCase()+m.plan.slice(1) : '—'} Plan</span>
+      <span>${m.plan ? planLabel(m.plan) : '—'} Plan</span>
       ${vehicleStr ? `<span>·</span><strong>${vehicleStr}</strong>` : ''}
     </div>
   </div>`;
@@ -1194,12 +1447,12 @@ async function openDetail(id) {
     <div class="plan-banner">
       <div>
         <div class="plan-banner-label">Current Plan</div>
-        <div class="plan-banner-name">${m.plan.charAt(0).toUpperCase()+m.plan.slice(1)}</div>
+        <div class="plan-banner-name">${esc(planLabel(m.plan))}</div>
         ${expDate ? `<div class="plan-banner-exp">Renews ${formatDate(expDate.getTime())}</div>` : ''}
       </div>
       <div style="text-align:right;">
         <div style="font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--gold);">
-          $${{basic:19,handwash:25}[m.plan]||'—'}
+          ${planPrice(m.plan) !== null ? '$' + planPrice(m.plan) : '—'}
         </div>
         <div style="font-size:12px; color:var(--text-muted);">/month</div>
       </div>
@@ -1305,6 +1558,7 @@ async function saveMember() {
 
   if (!name) { showToast('Name is required', 'error'); return; }
   if (!phone) { showToast('Phone is required', 'error'); return; }
+  if (!currentPlan) { showToast('Add a plan first — see the Plans page', 'error'); return; }
 
   await put('members', {
     name, phone, email, plate, year, color, vehicle,
@@ -1317,7 +1571,8 @@ async function saveMember() {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-status').value = 'active';
-  selectPlan(document.querySelector('[data-plan="basic"]'), 'basic');
+  currentPlan = null;
+  await renderPlanPicker();
 
   showToast(`${name} added!`);
   showPage('members', document.querySelectorAll('.nav-btn')[1]);
@@ -1389,9 +1644,11 @@ async function renderDashboard() {
 async function exportDB() {
   const members  = await getAll('members');
   const checkins = await getAll('checkins');
+  const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.7',
+    version: '1.0.8',
+    plans,
     members,
     checkins
   };
@@ -1431,12 +1688,13 @@ async function importDB(event) {
   }
 
   // Clear existing data
-  const tx = db.transaction(['members','checkins'], 'readwrite');
+  const tx = db.transaction(['members','checkins','plans'], 'readwrite');
   tx.objectStore('members').clear();
   tx.objectStore('checkins').clear();
+  tx.objectStore('plans').clear();
   await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
 
-  // Re-import members (strip id so autoIncrement re-assigns cleanly, preserve original ids for checkin links)
+  // Re-import members, keeping their ids, and record the old→new mapping.
   const idMap = {}; // old id → new id
   for (const m of payload.members) {
     const oldId = m.id;
@@ -1444,14 +1702,30 @@ async function importDB(event) {
     idMap[oldId] = newId;
   }
 
-  // Re-import checkins with remapped member ids
+  // Re-import checkins, relinked to the re-imported members. The key path has to
+  // be absent rather than undefined: an `id` property that exists but is
+  // undefined is not a valid key, and IndexedDB rejects the whole record.
   for (const c of (payload.checkins || [])) {
     const newMemberId = idMap[c.memberId];
-    if (newMemberId) await put('checkins', { ...c, id: undefined, memberId: newMemberId });
+    if (!newMemberId) continue;
+    const { id: _dropped, ...rest } = c;
+    await put('checkins', { ...rest, memberId: newMemberId });
   }
 
+  // Re-import plans. Backups taken before 1.0.8 have none, so fall back to the
+  // defaults and let reconcilePlans() adopt whatever the restored members use.
+  for (const p of (payload.plans || [])) {
+    if (p && p.key) await put('plans', p);
+  }
+  if (!(await getAll('plans')).length) {
+    for (const p of DEFAULT_PLANS) await put('plans', p);
+  }
+  const adopted = await reconcilePlans();
+  await renderPlanPicker();
+  await renderPlansPage();
+
   event.target.value = '';
-  showToast(`Restored ${payload.members.length} members`);
+  showToast(`Restored ${payload.members.length} members${adopted.length ? ` · adopted ${adopted.length} plan(s)` : ''}`);
   renderDashboard();
   renderMembers();
 }
@@ -1497,7 +1771,10 @@ async function seedIfEmpty() {
 // INIT
 // ════════════════════════════════════════════════
 openDB().then(async () => {
+  await seedPlans();        // defaults, plus any plan the members already reference
   await seedIfEmpty();
+  await reconcilePlans();   // the demo members may introduce plan keys of their own
+  await renderPlanPicker();
   renderDashboard();
 }).catch(err => {
   console.error('DB init failed', err);
