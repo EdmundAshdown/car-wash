@@ -19,8 +19,8 @@
     fullName:     'Downtown Car Wash',  // browser tab title
     dbName:       'carWashDB',          // IndexedDB name — changing this starts a fresh, empty database
     exportPrefix: 'car-wash',           // prefix for exported backup filenames
-    plateRegion:  '',                   // e.g. 'ALABAMA' — small line on the plate chip; blank hides it
-    plateMotto:   ''                    // e.g. 'Heart of Dixie' — the second line of that block
+    plateRegion:  '',                   // optional line on the plate chip, e.g. 'OREGON'; blank hides it
+    plateMotto:   ''                    // optional second line, e.g. 'The Beaver State'
   };
   document.title = BRAND.fullName + ' — Members';
   (() => {

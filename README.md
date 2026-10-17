@@ -18,8 +18,8 @@ Every shop-specific string lives in one `BRAND` object, declared near the top of
 | `fullName` | The browser tab title |
 | `dbName` | The IndexedDB database name — **changing this starts a fresh, empty database** |
 | `exportPrefix` | The prefix of exported backup filenames |
-| `plateRegion` | Optional state name on the plate chip, e.g. `'ALABAMA'`. Blank (the default) hides the block |
-| `plateMotto` | Optional second line under it, e.g. `'Heart of Dixie'` |
+| `plateRegion` | Optional line on the plate chip, e.g. `'OREGON'`. Blank (the default) hides the block |
+| `plateMotto` | Optional second line under it, e.g. `'The Beaver State'` |
 
 Reskinning for a different customer means editing those values and pushing.
 Nothing else in the file names a shop, a state or a region.
