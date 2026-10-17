@@ -1053,6 +1053,18 @@ async function seedPlans() {
   await reconcilePlans();
 }
 
+// Plans created before descriptions existed carry no `desc` property at all,
+// which is different from an admin deliberately clearing one (null, or '').
+// Give the shipped plans their default description back; leave the rest alone.
+async function backfillPlanDefaults() {
+  const plans = await getAll('plans');
+  for (const d of DEFAULT_PLANS) {
+    const p = plans.find(x => x.key === d.key);
+    if (p && p.desc === undefined) await put('plans', { ...p, desc: d.desc });
+  }
+  await refreshPlans();
+}
+
 // ── Add Member: the picker is built from the DB ──
 // Reads the store rather than trusting the cache, so the picker can never offer
 // a plan the Plans page has already changed or removed.
@@ -1658,6 +1670,7 @@ async function importDB(event) {
     for (const p of DEFAULT_PLANS) await put('plans', p);
   }
   const adopted = await reconcilePlans();
+  await backfillPlanDefaults();
   await renderPlanPicker();
   await renderPlansPage();
 
@@ -1713,6 +1726,7 @@ async function seedIfEmpty() {
 // ════════════════════════════════════════════════
 openDB().then(async () => {
   await seedPlans();        // defaults, plus any plan the members already reference
+  await backfillPlanDefaults();
   await seedIfEmpty();
   await reconcilePlans();   // the demo members may introduce plan keys of their own
   await renderPlanPicker();
