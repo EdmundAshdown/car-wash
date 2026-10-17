@@ -35,6 +35,16 @@ page. Each carries a name, a description of what it includes and a monthly
 price. The Add Member form only ever offers plans that exist there, so the two
 cannot drift apart, and a plan still in use cannot be deleted.
 
+Members are created and edited on the **Add** page. The same form serves both:
+opening a member and choosing *Edit* fills it in and switches the button to
+*Save Changes*, so there is one place a member is written and one set of
+validations. A member's id and join date are preserved across an edit, which is
+what keeps their check-in history attached.
+
+From a member's detail view they can also be deactivated or deleted. Deleting a
+member deletes their check-in history with them, so the Dashboard's totals stay
+honest.
+
 The Dashboard exports the whole book — members, check-ins and plans — as JSON,
 and can restore it. Restoring an older backup that has no plans falls back to
 the defaults and adopts whatever the restored members are on.

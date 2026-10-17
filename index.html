@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.11 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.12 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -708,7 +708,7 @@
 <div id="page-add" class="page">
   <div class="page-header">
     <div class="eyebrow" data-brand-name></div>
-    <h1>New Member</h1>
+    <h1 id="add-member-title">New Member</h1>
   </div>
 
   <div class="form-section">
@@ -764,8 +764,9 @@
   <div style="padding: 4px 20px 24px; display:flex; flex-direction:column; gap:10px;">
     <button class="btn-amber" onclick="saveMember()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-      Add Member
+      <span id="add-save-label">Add Member</span>
     </button>
+    <button class="btn-ghost" id="add-cancel" onclick="cancelMemberEdit()" style="display:none;">Cancel</button>
   </div>
 </div>
 
@@ -835,7 +836,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.11</div>
+    <div style="font-size:11px; color:var(--text-secondary); font-weight:500;">Version 1.0.12</div>
   </div>
 </div>
 
@@ -1207,6 +1208,7 @@ async function deletePlan(key) {
 // ════════════════════════════════════════════════
 let currentFilter = 'all';
 let currentPlan = 'basic';
+let editingMemberId = null;   // non-null while the Add page is standing in for an edit
 let cameraTarget = 'add'; // 'add' | 'checkin'
 
 let toastTimer = null;
@@ -1227,6 +1229,9 @@ function showPage(id, btn) {
     document.getElementById('checkin-search').value = '';
     document.getElementById('checkin-results').innerHTML = '';
   }
+  // Walking away from the Add page abandons an edit in progress, rather than
+  // leaving the form quietly holding someone else's details.
+  if (id !== 'add' && editingMemberId) resetMemberForm();
 }
 
 // ════════════════════════════════════════════════
@@ -1270,17 +1275,17 @@ function memberCardHTML(m) {
   return `
   <div class="member-card" onclick="openDetail(${m.id})">
     <div class="member-card-top">
-      <div class="member-avatar">${initials(m.name)}</div>
+      <div class="member-avatar">${esc(initials(m.name))}</div>
       <div class="member-info">
-        <div class="member-name">${m.name}</div>
-        <div class="member-phone">${m.phone || '—'}</div>
+        <div class="member-name">${esc(m.name)}</div>
+        <div class="member-phone">${esc(m.phone || '—')}</div>
       </div>
       ${statusBadge(m.status)}
     </div>
     ${m.plate ? plateChip(m.plate) : ''}
     <div class="member-card-footer">
-      <span>${m.plan ? planLabel(m.plan) : '—'} Plan</span>
-      ${vehicleStr ? `<span>·</span><strong>${vehicleStr}</strong>` : ''}
+      <span>${esc(m.plan ? planLabel(m.plan) : '—')} Plan</span>
+      ${vehicleStr ? `<span>·</span><strong>${esc(vehicleStr)}</strong>` : ''}
     </div>
   </div>`;
 }
@@ -1316,7 +1321,7 @@ function renderCheckinResults(members) {
       <div class="checkin-action">
         <button class="btn-primary" onclick="doCheckin(${m.id}, event)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Check In ${m.name.split(' ')[0]}
+          Check In ${esc(m.name.split(' ')[0])}
         </button>
       </div>
     </div>
@@ -1381,9 +1386,9 @@ async function openDetail(id) {
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-hero" style="padding:0 20px 24px; margin-bottom:0;">
-      <div class="detail-avatar">${initials(m.name)}</div>
+      <div class="detail-avatar">${esc(initials(m.name))}</div>
       <div>
-        <div class="detail-name">${m.name}</div>
+        <div class="detail-name">${esc(m.name)}</div>
         <div class="detail-since">Member since ${m.joinDate ? formatDate(m.joinDate) : '—'}</div>
         <div style="margin-top:6px;">${statusBadge(m.status)}</div>
       </div>
@@ -1414,12 +1419,12 @@ async function openDetail(id) {
       <div class="detail-row">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
         <div class="detail-row-label">Phone</div>
-        <div class="detail-row-value">${m.phone || '—'}</div>
+        <div class="detail-row-value">${esc(m.phone || '—')}</div>
       </div>
       ${m.email ? `<div class="detail-row">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
         <div class="detail-row-label">Email</div>
-        <div class="detail-row-value" style="font-size:13px;">${m.email}</div>
+        <div class="detail-row-value" style="font-size:13px;">${esc(m.email)}</div>
       </div>` : ''}
     </div>
 
@@ -1430,14 +1435,14 @@ async function openDetail(id) {
       <div class="detail-row">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         <div class="detail-row-label">Vehicle</div>
-        <div class="detail-row-value">${vehicleStr || '—'}</div>
+        <div class="detail-row-value">${esc(vehicleStr || '—')}</div>
       </div>
     </div>
 
     ${m.notes ? `<div class="divider"></div>
     <div class="detail-section" style="padding: 0 20px 20px;">
       <div class="detail-section-title">Notes</div>
-      <div style="font-size:14px; color:var(--border-strong); line-height:1.6;">${m.notes}</div>
+      <div style="font-size:14px; color:var(--border-strong); line-height:1.6;">${esc(m.notes)}</div>
     </div>` : ''}
 
     <div class="divider"></div>
@@ -1450,7 +1455,8 @@ async function openDetail(id) {
     <div class="divider"></div>
 
     <div style="padding: 0 20px 12px; display:flex; flex-direction:column; gap:10px;">
-      <button class="btn-primary" onclick="toggleStatus(${m.id})">
+      <button class="btn-primary" onclick="editMember(${m.id})">Edit Member</button>
+      <button class="btn-ghost" onclick="toggleStatus(${m.id})">
         ${m.status === 'active' ? 'Deactivate Membership' : 'Activate Membership'}
       </button>
     </div>
@@ -1520,6 +1526,55 @@ function selectPlan(el, plan) {
   currentPlan = plan;
 }
 
+const MEMBER_FORM_FIELDS = ['f-name','f-phone','f-email','f-plate','f-year','f-color','f-vehicle','f-notes'];
+
+async function resetMemberForm() {
+  editingMemberId = null;
+  MEMBER_FORM_FIELDS.forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('f-status').value = 'active';
+  currentPlan = null;
+  document.getElementById('add-member-title').textContent = 'New Member';
+  document.getElementById('add-save-label').textContent = 'Add Member';
+  document.getElementById('add-cancel').style.display = 'none';
+  await renderPlanPicker();
+}
+
+// Editing reuses the Add page rather than getting a second form of its own, so
+// a member is written in exactly one place with one set of validations. The id
+// is kept — their check-ins point at it — along with the join date, which the
+// form has no field for.
+async function editMember(id) {
+  const m = await get('members', id);
+  if (!m) return;
+  editingMemberId = id;
+  document.getElementById('f-name').value    = m.name || '';
+  document.getElementById('f-phone').value   = m.phone || '';
+  document.getElementById('f-email').value   = m.email || '';
+  document.getElementById('f-plate').value   = m.plate || '';
+  document.getElementById('f-year').value    = m.year || '';
+  document.getElementById('f-color').value   = m.color || '';
+  document.getElementById('f-vehicle').value = m.vehicle || '';
+  document.getElementById('f-status').value  = m.status || 'active';
+  document.getElementById('f-notes').value   = m.notes || '';
+  currentPlan = m.plan || null;
+  await renderPlanPicker();
+
+  document.getElementById('add-member-title').textContent = `Edit ${m.name}`;
+  document.getElementById('add-save-label').textContent = 'Save Changes';
+  document.getElementById('add-cancel').style.display = 'block';
+
+  document.getElementById('detail-view').style.display = 'none';
+  showPage('add', document.querySelectorAll('.nav-btn')[2]);
+  document.getElementById('f-name').focus();
+}
+
+async function cancelMemberEdit() {
+  const id = editingMemberId;
+  await resetMemberForm();
+  showPage('members', document.querySelectorAll('.nav-btn')[1]);
+  if (id) await openDetail(id);   // back where the edit was started from
+}
+
 async function saveMember() {
   const name = document.getElementById('f-name').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
@@ -1535,20 +1590,26 @@ async function saveMember() {
   if (!phone) { showToast('Phone is required', 'error'); return; }
   if (!currentPlan) { showToast('Add a plan first — see the Plans page', 'error'); return; }
 
-  await put('members', {
-    name, phone, email, plate, year, color, vehicle,
-    plan: currentPlan, status, notes,
-    joinDate: Date.now()
-  });
+  const fields = { name, phone, email, plate, year, color, vehicle, plan: currentPlan, status, notes };
+  const editingId = editingMemberId;
 
-  // Reset form
-  ['f-name','f-phone','f-email','f-plate','f-year','f-color','f-vehicle','f-notes'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('f-status').value = 'active';
-  currentPlan = null;
-  await renderPlanPicker();
+  if (editingId) {
+    const m = await get('members', editingId);
+    if (!m) {
+      showToast('That member no longer exists', 'error');
+      await resetMemberForm();
+      return;
+    }
+    await put('members', { ...m, ...fields });   // spread keeps id, joinDate and anything else
+    await resetMemberForm();
+    showToast(`${name} updated`);
+    showPage('members', document.querySelectorAll('.nav-btn')[1]);
+    await openDetail(editingId);                 // so the change is visible straight away
+    return;
+  }
 
+  await put('members', { ...fields, joinDate: Date.now() });
+  await resetMemberForm();
   showToast(`${name} added!`);
   showPage('members', document.querySelectorAll('.nav-btn')[1]);
 }
@@ -1599,10 +1660,10 @@ async function renderDashboard() {
     if (!m) return '';
     return `<div class="checkin-entry" style="border-bottom:1px solid rgba(255,255,255,0.05); padding: 10px 0;">
       <div style="display:flex; align-items:center; gap:10px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--bg);flex-shrink:0;">${initials(m.name)}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--bg);flex-shrink:0;">${esc(initials(m.name))}</div>
         <div>
-          <div style="font-size:15px;font-weight:500;color:var(--white);">${m.name}</div>
-          <div style="font-size:12px;color:var(--text-muted);">${m.plate || m.vehicle || '—'}</div>
+          <div style="font-size:15px;font-weight:500;color:var(--white);">${esc(m.name)}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${esc(m.plate || m.vehicle || '—')}</div>
         </div>
       </div>
       <div style="text-align:right;">
@@ -1622,7 +1683,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.11',
+    version: '1.0.12',
     plans,
     members,
     checkins
