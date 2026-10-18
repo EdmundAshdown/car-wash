@@ -18,8 +18,10 @@ Every shop-specific string lives in one `BRAND` object, declared near the top of
 | `fullName` | The browser tab title |
 | `dbName` | The IndexedDB database name — **changing this starts a fresh, empty database** |
 | `exportPrefix` | The prefix of exported backup filenames |
+| `privacyUrl` | The footer's privacy-policy link. Blank hides the link |
 | `plateRegion` | Optional line on the plate chip, e.g. `'OREGON'`. Blank (the default) hides the block |
 | `plateMotto` | Optional second line under it, e.g. `'The Beaver State'` |
+| `seedDemo` | **`false` for a real shop.** `true` (the default) seeds four synthetic demo members on a first run; `false` starts with an empty book |
 
 Reskinning for a different customer means editing those values and pushing.
 Nothing else in the file names a shop, a state or a region.
@@ -27,13 +29,16 @@ Nothing else in the file names a shop, a state or a region.
 ## Data
 
 Members, check-ins and membership plans are stored in the browser's IndexedDB,
-per origin. The first run seeds four synthetic demo members — fictional names,
-`555` phone numbers and `example.com` addresses — so the screens are not empty.
+per origin. With `BRAND.seedDemo` set, the first run seeds four synthetic demo
+members — fictional names, `555` phone numbers and `example.com` addresses — so
+the screens are not empty. Set it to `false` for a real shop: the app then opens
+on an empty book.
 
 Membership plans are records rather than constants, managed on the **Plans**
-page. Each carries a name, a description of what it includes and a monthly
-price. The Add Member form only ever offers plans that exist there, so the two
-cannot drift apart, and a plan still in use cannot be deleted.
+page. Each carries a name, a description of what it includes, a price and a
+billing period (monthly, yearly, or unset). The Add Member form only ever offers
+plans that exist there, so the two cannot drift apart, and a plan still in use
+cannot be deleted. The order of the list is set on that page too.
 
 Members are created and edited on the **Add** page. The same form serves both:
 opening a member and choosing *Edit* fills it in and switches the button to

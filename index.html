@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.18 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.19 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -19,8 +19,10 @@
     fullName:     'Downtown Car Wash',  // browser tab title
     dbName:       'carWashDB',          // IndexedDB name — changing this starts a fresh, empty database
     exportPrefix: 'car-wash',           // prefix for exported backup filenames
+    privacyUrl:   '../privacy.html',    // optional privacy-policy link; blank hides the footer link
     plateRegion:  '',                   // optional line on the plate chip, e.g. 'OREGON'; blank hides it
-    plateMotto:   ''                    // optional second line, e.g. 'The Beaver State'
+    plateMotto:   '',                   // optional second line, e.g. 'The Beaver State'
+    seedDemo:     true                  // false starts with an empty book — set this for a real shop
   };
   document.title = BRAND.fullName + ' — Members';
   (() => {
@@ -32,7 +34,8 @@
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap');
 
   :root {
-    /* Two clearly distinct blues — dark base, noticeably lighter surface */
+    /* Two clearly distinct blues: a near-white page, with content on the
+       darker surface. Nothing that carries text paints itself with --bg. */
     --bg:           #EEF3FC;   /* near-white blue tint — page background */
     --surface:      #112D6B;   /* rich royal blue — cards & nav */
     --surface-hi:   #1A3F8F;   /* slightly lighter — hover / inputs */
@@ -884,7 +887,10 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-muted); font-weight:500;">Version 1.0.18</div>
+    <div style="font-size:11px; color:var(--text-muted); font-weight:500;">Version 1.0.19</div>
+    <div style="margin-top:7px;">
+      <a id="privacy-link" href="../privacy.html" style="font-size:11px; color:var(--text-muted); font-weight:500; text-decoration:underline; text-underline-offset:2px;">Privacy Policy</a>
+    </div>
   </div>
 </div>
 
@@ -970,6 +976,11 @@
 // BRANDING — applies the BRAND config declared in <head>
 // ════════════════════════════════════════════════
 document.querySelectorAll('[data-brand-name]').forEach(el => el.textContent = BRAND.name);
+// The privacy policy lives on whatever host serves the app, so its address is a
+// BRAND value like every other shop-specific string. A blank one hides the link
+// rather than leaving a dead end behind.
+if (BRAND.privacyUrl) document.getElementById('privacy-link').href = BRAND.privacyUrl;
+else document.getElementById('privacy-link').style.display = 'none';
 
 // ════════════════════════════════════════════════
 // DB
@@ -1864,7 +1875,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.18',
+    version: '1.0.19',
     plans,
     members,
     checkins
@@ -1964,6 +1975,11 @@ function showToast(msg, type = 'success') {
 // SEED DEMO DATA (first run only)
 // ════════════════════════════════════════════════
 async function seedIfEmpty() {
+  // A real shop should not open on four fictional members it has to work out how
+  // to remove. Set BRAND.seedDemo to false and the app starts empty instead,
+  // which is the last piece of the white-labelling.
+  if (!BRAND.seedDemo) return;
+
   const all = await getAll('members');
   if (all.length > 0) return;
 
