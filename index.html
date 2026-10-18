@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.17 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.18 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -442,6 +442,7 @@
     color: var(--text-muted);
   }
   .plan-row-actions { display: flex; gap: 6px; }
+  .plan-move { display: flex; flex-direction: column; gap: 4px; }
   .plan-icon-btn {
     background: none;
     border: 1px solid var(--border);
@@ -453,8 +454,14 @@
     align-items: center;
   }
   .plan-icon-btn:active { color: var(--white); border-color: var(--border-strong); }
+  /* The move buttons at the ends of the list are inert rather than hidden, so
+     the rows stay the same width and the columns line up. */
+  .plan-icon-btn:disabled { opacity: 0.3; cursor: default; }
+  .plan-icon-btn:disabled:active { color: var(--text-secondary); border-color: var(--border); }
+  .plan-move .plan-icon-btn { padding: 4px 6px; }
   .plan-icon-btn.danger { color: #F87171; }
   .plan-icon-btn svg { width: 15px; height: 15px; stroke-width: 2; }
+  .plan-move .plan-icon-btn svg { width: 13px; height: 13px; }
 
   .plan-picker {
     display: grid;
@@ -877,7 +884,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-muted); font-weight:500;">Version 1.0.17</div>
+    <div style="font-size:11px; color:var(--text-muted); font-weight:500;">Version 1.0.18</div>
   </div>
 </div>
 
@@ -899,7 +906,13 @@
     <div style="height:10px"></div>
     <textarea class="form-input" id="p-desc" rows="2" placeholder="What the plan includes (e.g., Unlimited exterior washes, priority lane)" style="resize:vertical; min-height:72px; line-height:1.45;"></textarea>
     <div style="height:10px"></div>
-    <input class="form-input" id="p-price" type="number" inputmode="decimal" min="0" step="1" placeholder="Monthly price in dollars" autocomplete="off">
+    <input class="form-input" id="p-price" type="number" inputmode="decimal" min="0" step="1" placeholder="Price in dollars" autocomplete="off">
+    <div style="height:10px"></div>
+    <select class="form-input" id="p-period">
+      <option value="monthly">Billed monthly</option>
+      <option value="yearly">Billed yearly</option>
+      <option value="">No billing period set</option>
+    </select>
     <div style="height:14px"></div>
     <button class="btn-primary" id="p-save" onclick="savePlan()">Add Plan</button>
     <button class="btn-ghost" id="p-cancel" onclick="cancelPlanEdit()" style="display:none;">Cancel</button>
@@ -1048,12 +1061,21 @@ function del(store, key) {
 // Member picker and the plan list cannot drift apart.
 // ════════════════════════════════════════════════
 const DEFAULT_PLANS = [
-  { key: 'basic',    name: 'Basic',     price: 19, order: 1, desc: 'Exterior wash, use of the self-serve bays' },
-  { key: 'handwash', name: 'Hand Wash', price: 25, order: 2, desc: 'Hand washed and hand dried by staff, every visit' }
+  { key: 'basic',    name: 'Basic',     price: 19, period: 'monthly', order: 1, desc: 'Exterior wash, use of the self-serve bays' },
+  { key: 'handwash', name: 'Hand Wash', price: 25, period: 'monthly', order: 2, desc: 'Hand washed and hand dried by staff, every visit' }
 ];
 
 let PLANS = [];            // in-memory cache; reloaded after every change
 let editingPlanKey = null;
+
+// The billing periods a plan can be sold on. `months` is what the renewal date
+// is computed from; `suffix` is what the price is shown with. A plan with no
+// period — an older record, or one adopted from member data — has neither, and
+// the app shows no renewal date rather than inventing one.
+const PERIODS = {
+  monthly: { label: 'Monthly', adj: 'monthly', suffix: '/month', months: 1 },
+  yearly:  { label: 'Yearly',  adj: 'yearly',  suffix: '/year',  months: 12 }
+};
 
 const esc      = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const titleCase = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
@@ -1066,6 +1088,8 @@ const planPrice = key => {
   return (p && typeof p.price === 'number' && p.price > 0) ? p.price : null;
 };
 const planDesc  = key => { const p = planByKey(key); return (p && p.desc) ? p.desc : null; };
+const planPeriod = key => { const p = planByKey(key); return (p && PERIODS[p.period]) ? PERIODS[p.period] : null; };
+const nextPlanOrder = () => PLANS.length ? Math.max(...PLANS.map(p => p.order || 0)) + 1 : 1;
 
 async function refreshPlans() {
   PLANS = (await getAll('plans'))
@@ -1097,14 +1121,19 @@ async function seedPlans() {
   await reconcilePlans();
 }
 
-// Plans created before descriptions existed carry no `desc` property at all,
-// which is different from an admin deliberately clearing one (null, or '').
-// Give the shipped plans their default description back; leave the rest alone.
+// Plans created before a property existed carry no key for it at all, which is
+// different from an admin deliberately clearing one (null, or ''). Give the
+// shipped plans their defaults back for anything missing; never overwrite a
+// value that is present, however the admin left it.
 async function backfillPlanDefaults() {
   const plans = await getAll('plans');
   for (const d of DEFAULT_PLANS) {
     const p = plans.find(x => x.key === d.key);
-    if (p && p.desc === undefined) await put('plans', { ...p, desc: d.desc });
+    if (!p) continue;
+    const patch = {};
+    if (p.desc === undefined)   patch.desc = d.desc;
+    if (p.period === undefined) patch.period = d.period;
+    if (Object.keys(patch).length) await put('plans', { ...p, ...patch });
   }
   await refreshPlans();
 }
@@ -1131,7 +1160,7 @@ async function renderPlanPicker() {
     <div class="plan-option${p.key === currentPlan ? ' selected' : ''}" data-plan="${p.key}" onclick="selectPlan(this, '${p.key}')">
       <div class="plan-name">${esc(p.name)}</div>
       <div class="plan-price">${p.price > 0 ? '$' + p.price : '—'}</div>
-      <div class="plan-freq">/month</div>
+      <div class="plan-freq">${PERIODS[p.period] ? PERIODS[p.period].suffix : ''}</div>
       ${p.desc ? `<div class="plan-desc">${esc(p.desc)}</div>` : ''}
     </div>`).join('');
 }
@@ -1149,9 +1178,11 @@ async function renderPlansPage() {
     return;
   }
 
-  list.innerHTML = PLANS.map(p => {
+  list.innerHTML = PLANS.map((p, i) => {
     const n = counts[p.key] || 0;
     const priced = p.price > 0;
+    const per = PERIODS[p.period] || null;
+    const billing = per ? `billed ${per.adj}` : `no billing period`;
     return `
     <div class="plan-row">
       <div class="plan-row-main">
@@ -1159,9 +1190,17 @@ async function renderPlansPage() {
         ${p.desc
           ? `<div class="plan-row-desc">${esc(p.desc)}</div>`
           : `<div class="plan-row-desc unset">No description</div>`}
-        <div class="plan-row-meta">${n} member${n === 1 ? '' : 's'}${p.adopted ? ' · taken from member data' : ''}</div>
+        <div class="plan-row-meta">${n} member${n === 1 ? '' : 's'} · ${billing}${p.adopted ? ' · taken from member data' : ''}</div>
       </div>
       <div class="plan-row-price${priced ? '' : ' unset'}">${priced ? '$' + p.price : 'no price'}</div>
+      <div class="plan-move">
+        <button class="plan-icon-btn" title="Move up" aria-label="Move ${esc(p.name)} up"${i === 0 ? ' disabled' : ''} onclick="movePlan('${p.key}',-1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+        <button class="plan-icon-btn" title="Move down" aria-label="Move ${esc(p.name)} down"${i === PLANS.length - 1 ? ' disabled' : ''} onclick="movePlan('${p.key}',1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+      </div>
       <div class="plan-row-actions">
         <button class="plan-icon-btn" title="Edit" aria-label="Edit ${esc(p.name)}" onclick="editPlan('${p.key}')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
@@ -1174,6 +1213,24 @@ async function renderPlansPage() {
   }).join('');
 }
 
+// Swaps a plan with its neighbour and rewrites every order in one pass. The
+// stored values may never have been set — adopted plans arrive carrying 99 —
+// and duplicates would leave the sort up to the tie-breaker, so normalising the
+// whole list is simpler than trying to patch two records correctly.
+async function movePlan(key, delta) {
+  const i = PLANS.findIndex(p => p.key === key);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= PLANS.length) return;
+
+  const next = PLANS.slice();
+  [next[i], next[j]] = [next[j], next[i]];
+  for (let k = 0; k < next.length; k++) {
+    if (next[k].order !== k + 1) await put('plans', { ...next[k], order: k + 1 });
+  }
+  await renderPlansPage();
+  await renderPlanPicker();
+}
+
 function editPlan(key) {
   const p = planByKey(key);
   if (!p) return;
@@ -1181,6 +1238,7 @@ function editPlan(key) {
   document.getElementById('p-name').value  = p.name;
   document.getElementById('p-desc').value  = p.desc || '';
   document.getElementById('p-price').value = p.price > 0 ? p.price : '';
+  document.getElementById('p-period').value = PERIODS[p.period] ? p.period : '';
   document.getElementById('plan-form-title').textContent = 'Edit Plan';
   document.getElementById('p-save').textContent = 'Save Changes';
   document.getElementById('p-cancel').style.display = 'block';
@@ -1192,6 +1250,7 @@ function cancelPlanEdit() {
   document.getElementById('p-name').value  = '';
   document.getElementById('p-desc').value  = '';
   document.getElementById('p-price').value = '';
+  document.getElementById('p-period').value = 'monthly';
   document.getElementById('plan-form-title').textContent = 'Add a Plan';
   document.getElementById('p-save').textContent = 'Add Plan';
   document.getElementById('p-cancel').style.display = 'none';
@@ -1202,6 +1261,8 @@ async function savePlan() {
   const desc     = document.getElementById('p-desc').value.trim();
   const priceRaw = document.getElementById('p-price').value.trim();
   const price    = priceRaw === '' ? null : Number(priceRaw);
+  const periodRaw = document.getElementById('p-period').value;
+  const period    = PERIODS[periodRaw] ? periodRaw : null;
 
   if (!name) { showToast('Plan name is required', 'error'); return; }
   if (price !== null && (!isFinite(price) || price < 0)) { showToast('Price must be a number', 'error'); return; }
@@ -1210,13 +1271,13 @@ async function savePlan() {
     const p = planByKey(editingPlanKey);
     if (!p) return;
     // The key never changes, so members already on this plan stay on it.
-    await put('plans', { key: p.key, name, desc: desc || null, price, order: p.order });
+    await put('plans', { key: p.key, name, desc: desc || null, price, period, order: p.order });
     showToast('Plan updated');
   } else {
     const key = slugify(name);
     if (!key) { showToast('Plan name needs letters or numbers', 'error'); return; }
     if (PLANS.some(p => p.key === key)) { showToast('A plan with that name already exists', 'error'); return; }
-    await put('plans', { key, name, desc: desc || null, price, order: PLANS.length + 1 });
+    await put('plans', { key, name, desc: desc || null, price, period, order: nextPlanOrder() });
     showToast('Plan added');
   }
 
@@ -1311,6 +1372,33 @@ function formatDate(ts) {
 }
 function formatTime(ts) {
   return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+// Adds whole months, keeping the day of the month where the target month is long
+// enough. A naive setMonth overflows — 31 January plus one month is 2 or 3 March,
+// not the end of February — which would walk a member's renewal date forward
+// every time their cycle passed through a short month.
+function addMonths(date, n) {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  return d;
+}
+
+// The next renewal is the first cycle boundary counted from the join date that
+// has not passed. Counting from the join date is what makes it right for someone
+// who joined two years ago: their next renewal is this cycle's boundary, not the
+// one on their anniversary. Null when the plan carries no billing period, so the
+// app shows nothing rather than inventing a date.
+function nextRenewal(joinDate, periodMonths) {
+  if (!joinDate || !periodMonths) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let d = new Date(joinDate);
+  // Bounded so a corrupt join date cannot spin here.
+  for (let i = 0; i < 2400 && d < today; i++) d = addMonths(d, periodMonths);
+  return d < today ? null : d;
 }
 
 function plateChip(plate) {
@@ -1447,7 +1535,8 @@ async function openDetail(id) {
   const myCheckins = checkins.filter(c => c.memberId === id).sort((a,b) => b.ts - a.ts);
 
   const vehicleStr = [m.year, m.color, m.vehicle].filter(Boolean).join(' ');
-  const expDate = m.joinDate ? new Date(m.joinDate + (365*86400000)) : null;
+  const period = planPeriod(m.plan);
+  const renews = period ? nextRenewal(m.joinDate, period.months) : null;
 
   const recentHTML = myCheckins.slice(0,10).map(c => `
     <div class="checkin-entry">
@@ -1475,13 +1564,13 @@ async function openDetail(id) {
         <div class="plan-banner-label">Current Plan</div>
         <div class="plan-banner-name">${esc(planLabel(m.plan))}</div>
         ${planDesc(m.plan) ? `<div class="plan-banner-desc">${esc(planDesc(m.plan))}</div>` : ''}
-        ${expDate ? `<div class="plan-banner-exp">Renews ${formatDate(expDate.getTime())}</div>` : ''}
+        ${renews ? `<div class="plan-banner-exp">Renews ${formatDate(renews.getTime())}</div>` : ''}
       </div>
       <div style="text-align:right;">
         <div style="font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--gold);">
           ${planPrice(m.plan) !== null ? '$' + planPrice(m.plan) : '—'}
         </div>
-        <div style="font-size:12px; color:var(--text-muted);">/month</div>
+        <div style="font-size:12px; color:var(--text-muted);">${period ? period.suffix : ''}</div>
       </div>
     </div>` : ''}
 
@@ -1775,7 +1864,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.17',
+    version: '1.0.18',
     plans,
     members,
     checkins
