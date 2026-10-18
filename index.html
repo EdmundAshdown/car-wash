@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-title" content="Downtown Car Wash">
 <meta name="theme-color" content="#EEF3FC">
 <title>Downtown Car Wash — Members</title>
-<!-- APP VERSION: 1.0.16 — update this and the Dashboard label on each release -->
+<!-- APP VERSION: 1.0.17 — update this and the Dashboard label on each release -->
 
 <!-- ══════════════════════════════════════════════════════════════════
      WHITE-LABEL CONFIG — the only place the shop's identity is set.
@@ -353,6 +353,7 @@
   .empty-state p { font-size: 14px; line-height: 1.6; }
 
   /* ── MEMBERS LIST ── */
+  .members-search { padding: 0 20px 16px; }
   .members-controls {
     padding: 0 20px 16px;
     display: flex;
@@ -730,6 +731,12 @@
     <div class="eyebrow" data-brand-name></div>
     <h1>Members</h1>
   </div>
+  <div class="members-search">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+      <input class="search-input" id="member-search" type="text" placeholder="Name, phone, or plate number…" autocomplete="off" autocorrect="off" oninput="setMemberQuery(this.value)">
+    </div>
+  </div>
   <div class="members-controls">
     <button class="filter-chip active" data-filter="all" onclick="setFilter(this,&#39;all&#39;)">All</button>
     <button class="filter-chip" data-filter="active" onclick="setFilter(this,&#39;active&#39;)">Active</button>
@@ -870,7 +877,7 @@
   </div>
 
   <div style="padding: 24px 20px 8px; text-align:center;">
-    <div style="font-size:11px; color:var(--text-muted); font-weight:500;">Version 1.0.16</div>
+    <div style="font-size:11px; color:var(--text-muted); font-weight:500;">Version 1.0.17</div>
   </div>
 </div>
 
@@ -1243,6 +1250,7 @@ async function deletePlan(key) {
 // STATE
 // ════════════════════════════════════════════════
 let currentFilter = 'all';
+let memberQuery = '';   // the Members page search box, kept in memory only
 let currentPlan = 'basic';
 let editingMemberId = null;   // non-null while the Add page is standing in for an edit
 let cameraTarget = 'add'; // 'add' | 'checkin'
@@ -1275,6 +1283,21 @@ function showPage(id, btn) {
 // ════════════════════════════════════════════════
 function initials(name) {
   return name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+}
+
+// One matcher for both searches. The Check In page looks someone up by name,
+// phone or plate and the member list filters by the same three fields, so they
+// read it from here rather than each keeping their own copy.
+//
+// The phone test applies only when the query contains digits. Every phone
+// number contains the empty string, so testing it unconditionally made any
+// query without a digit in it match every member in the book.
+function memberMatches(m, q) {
+  if (!q) return true;
+  const digits = q.replace(/\D/g, '');
+  return m.name.toLowerCase().includes(q) ||
+    (digits.length > 0 && (m.phone || '').replace(/\D/g, '').includes(digits)) ||
+    (m.plate || '').toLowerCase().includes(q);
 }
 
 function statusBadge(status) {
@@ -1333,12 +1356,7 @@ document.getElementById('checkin-search').addEventListener('input', async functi
   const q = this.value.trim().toLowerCase();
   if (!q) { document.getElementById('checkin-results').innerHTML = ''; return; }
   const all = await getAll('members');
-  const matches = all.filter(m =>
-    m.name.toLowerCase().includes(q) ||
-    (m.phone || '').replace(/\D/g,'').includes(q.replace(/\D/g,'')) ||
-    (m.plate || '').toLowerCase().includes(q)
-  );
-  renderCheckinResults(matches);
+  renderCheckinResults(all.filter(m => memberMatches(m, q)));
 });
 
 function renderCheckinResults(members) {
@@ -1385,12 +1403,30 @@ function setFilter(btn, filter) {
   renderMembers();
 }
 
+// The search box holds its value while the app is open — it is a filter on the
+// list rather than a one-off lookup — and the box itself shows the state, so a
+// short list is never unexplained.
+function setMemberQuery(v) {
+  memberQuery = v.trim().toLowerCase();
+  renderMembers();
+}
+
 async function renderMembers() {
   const all = await getAll('members');
-  const filtered = currentFilter === 'all' ? all : all.filter(m => m.status === currentFilter);
+  const q = memberQuery;
+  const searched = q ? all.filter(m => memberMatches(m, q)) : all;
+  const filtered = currentFilter === 'all' ? searched : searched.filter(m => m.status === currentFilter);
   const el = document.getElementById('members-list');
   if (!filtered.length) {
-    el.innerHTML = `<div class="empty-state">
+    // A search that found nobody is a different thing from an empty book, and
+    // saying "no members yet" to someone who has just typed a name is a lie.
+    el.innerHTML = q
+      ? `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <h3>No match found</h3>
+      <p>Try a different name, phone, or plate number.</p>
+    </div>`
+      : `<div class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <h3>No members yet</h3>
       <p>Tap Add to register your first member.</p>
@@ -1556,6 +1592,26 @@ function selectPlan(el, plan) {
 
 const MEMBER_FORM_FIELDS = ['f-name','f-phone','f-email','f-plate','f-year','f-color','f-vehicle','f-notes'];
 
+// Members are looked up by phone and plate, so a second record carrying either
+// makes that lookup ambiguous. Returns the first other member matching, on
+// phone first and then plate. Compare exactly (digits for a phone, letters and
+// digits for a plate) — a near-miss is not a duplicate.
+async function findDuplicate({ phone, plate }, exceptId) {
+  const digits = (phone || '').replace(/\D/g, '');
+  const plateKey = key => (key || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const others = (await getAll('members')).filter(m => m.id !== exceptId);
+  if (digits) {
+    const hit = others.find(m => (m.phone || '').replace(/\D/g, '') === digits);
+    if (hit) return { member: hit, field: 'phone number' };
+  }
+  const p = plateKey(plate);
+  if (p) {
+    const hit = others.find(m => plateKey(m.plate) === p);
+    if (hit) return { member: hit, field: 'plate' };
+  }
+  return null;
+}
+
 async function resetMemberForm() {
   editingMemberId = null;
   MEMBER_FORM_FIELDS.forEach(id => { document.getElementById(id).value = ''; });
@@ -1620,6 +1676,14 @@ async function saveMember() {
 
   const fields = { name, phone, email, plate, year, color, vehicle, plan: currentPlan, status, notes };
   const editingId = editingMemberId;
+
+  // Warn, but allow: one number can legitimately cover two cars in a household,
+  // and only the person at the counter knows whether this is that or a re-entry.
+  const dupe = await findDuplicate({ phone, plate }, editingId);
+  if (dupe) {
+    const verb = editingId ? 'Save' : 'Add';
+    if (!confirm(`${dupe.member.name} already has that ${dupe.field}.\n\n${verb} ${name} anyway?`)) return;
+  }
 
   if (editingId) {
     const m = await get('members', editingId);
@@ -1711,7 +1775,7 @@ async function exportDB() {
   const plans    = await getAll('plans');
   const payload  = {
     exportedAt: new Date().toISOString(),
-    version: '1.0.16',
+    version: '1.0.17',
     plans,
     members,
     checkins
